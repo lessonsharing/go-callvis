@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"go/build"
 	"log"
-	"os"
 	"strings"
 	"time"
 
@@ -20,14 +19,15 @@ import (
 var Version = "0.0.0-src"
 
 var (
-	focusFlag   = flag.String("focus", "main", "Focus package with name or import path.")
-	limitFlag   = flag.String("limit", "", "Limit package paths to prefix. (separate multiple by comma)")
-	groupFlag   = flag.String("group", "", "Grouping functions by [pkg, type] (separate multiple by comma).")
-	ignoreFlag  = flag.String("ignore", "", "Ignore package paths with prefix (separate multiple by comma).")
-	nostdFlag   = flag.Bool("nostd", false, "Omit calls to/from std packages.")
-	testFlag    = flag.Bool("tests", false, "Include test code.")
-	debugFlag   = flag.Bool("debug", false, "Enable verbose log.")
-	versionFlag = flag.Bool("version", false, "Show version and exit.")
+	focusFlag     = flag.String("focus", "main", "Focus package with name or import path.")
+	limitFlag     = flag.String("limit", "", "Limit package paths to prefix. (separate multiple by comma)")
+	groupFlag     = flag.String("group", "", "Grouping functions by [pkg, type] (separate multiple by comma).")
+	ignoreFlag    = flag.String("ignore", "", "Ignore package paths with prefix (separate multiple by comma).")
+	buildTagsFlag = flag.String("tags", "", "A list of build tags to consider satisfied during the build (separate multiple by comma).")
+	nostdFlag     = flag.Bool("nostd", false, "Omit calls to/from std packages.")
+	testFlag      = flag.Bool("tests", false, "Include test code.")
+	debugFlag     = flag.Bool("debug", false, "Enable verbose log.")
+	versionFlag   = flag.Bool("version", false, "Show version and exit.")
 )
 
 func main() {
@@ -38,45 +38,70 @@ func main() {
 	flag.Parse()
 
 	if *versionFlag {
-		fmt.Fprintf(os.Stderr, "go-callvis %s\n", Version)
-		os.Exit(0)
-	}
-	if *debugFlag {
-		log.SetFlags(log.Lmicroseconds)
-	}
+		fmt.Println("go-callvis", Version)
+		return
+	} else {
+		var (
+			ctxt        *build.Context = &build.Default
+			groupBy     map[string]bool
+			limitPaths  []string
+			ignorePaths []string
 
-	groupBy := make(map[string]bool)
-	for _, g := range strings.Split(*groupFlag, ",") {
-		g := strings.TrimSpace(g)
-		if g == "" {
-			continue
-		}
-		if g != "pkg" && g != "type" {
-			fmt.Fprintf(os.Stderr, "go-callvis: %s\n", "invalid group option")
-			os.Exit(1)
-		}
-		groupBy[g] = true
-	}
+			value        string
+		)
 
-	limitPaths := []string{}
-	for _, p := range strings.Split(*limitFlag, ",") {
-		p = strings.TrimSpace(p)
-		if p != "" {
-			limitPaths = append(limitPaths, p)
+		if *debugFlag {
+			log.SetFlags(log.Lmicroseconds)
 		}
-	}
 
-	ignorePaths := []string{}
-	for _, p := range strings.Split(*ignoreFlag, ",") {
-		p = strings.TrimSpace(p)
-		if p != "" {
-			ignorePaths = append(ignorePaths, p)
+		if "" != *groupFlag {
+			groupBy = make(map[string]bool)
+
+			for _, value = range strings.Split(*groupFlag, ",") {
+				if value = strings.TrimSpace(value); value == "" {
+					continue
+				} else if value != "pkg" && value != "type" {
+					log.Fatalln("go-callvis: invalid group option")
+				} else {
+					groupBy[value] = true
+				}
+			}
 		}
-	}
 
-	if err := run(&build.Default, *focusFlag, groupBy, limitPaths, ignorePaths, *nostdFlag, *testFlag, flag.Args()); err != nil {
-		fmt.Fprintf(os.Stderr, "go-callvis: %s\n", err)
-		os.Exit(1)
+		if "" != *limitFlag {
+			limitPaths = make([]string, 0)
+
+			for _, value = range strings.Split(*limitFlag, ",") {
+				if value = strings.TrimSpace(value); value != "" {
+					limitPaths = append(limitPaths, value)
+				}
+			}
+		}
+
+		if "" != *ignoreFlag {
+			ignorePaths = make([]string, 0)
+
+			for _, value = range strings.Split(*ignoreFlag, ",") {
+				if value = strings.TrimSpace(value); value != "" {
+					ignorePaths = append(ignorePaths, value)
+				}
+			}
+		}
+
+		// Build tags.
+		if "" != *buildTagsFlag {
+			ctxt.BuildTags = make([]string, 0)
+
+			for _, value = range strings.Split(*buildTagsFlag, ",") {
+				if value = strings.TrimSpace(value); value != "" {
+					ctxt.BuildTags = append(ctxt.BuildTags, value)
+				}
+			}
+		}
+
+		if err := run(ctxt, *focusFlag, groupBy, limitPaths, ignorePaths, *nostdFlag, *testFlag, flag.Args()); err != nil {
+			log.Fatalln("go-callvis:", err.Error())
+		}
 	}
 }
 
@@ -122,7 +147,7 @@ func run(ctxt *build.Context, focus string, groupBy map[string]bool, limitPaths,
 				return err
 			} else if len(foundPaths) > 1 {
 				for _, p := range foundPaths {
-					fmt.Fprintf(os.Stderr, " - %s\n", p)
+					log.Fatalf(" - %s\n", p)
 				}
 				return fmt.Errorf("found %d packages with name %q, use import path not name", len(foundPaths), focus)
 			}
