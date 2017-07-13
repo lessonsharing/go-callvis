@@ -101,20 +101,28 @@ cd $GOPATH/src/github.com/TrueFurby/go-callvis && make
 ### Options
 
 ```
--focus string
-      Focus package with import path or name. (default: main)
--limit string
-      Limit package paths to prefix. (separate multiple by comma)
--group string
-      Grouping functions by [pkg, type]. (separate multiple by comma)
--ignore string
-      Ignore package paths with prefix. (separate multiple by comma)
--nostd
-      Omit calls from/to std packages.
--minlen uint
-      Minimum edge length (for wider output). (default: 2)
--nodesep float
-      Minimum space between two adjacent nodes in the same rank (for taller output). (default: 0.35)
+ -debug
+        Enable verbose log.
+  -focus string
+        Focus package with name or import path. (default "main")
+  -group string
+        Grouping functions by [pkg, type] (separate multiple by comma).
+  -ignore string
+        Ignore package paths with prefix (separate multiple by comma).
+  -limit string
+        Limit package paths to prefix. (separate multiple by comma)
+  -minlen uint
+        Minimum edge length (for wider output). (default 2)
+  -nodesep float
+        Minimum space between two adjacent nodes in the same rank (for taller output). (default 0.35)
+  -nostd
+        Omit calls to/from std packages.
+  -tags string
+        A list of build tags to consider satisfied during the build (separate multiple by comma).
+  -tests
+        Include test code.
+  -version
+        Show version and exit.
 ```
 
 ## Examples
